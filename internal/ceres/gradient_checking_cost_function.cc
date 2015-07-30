@@ -1,6 +1,6 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-// http://code.google.com/p/ceres-solver/
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -51,6 +51,12 @@
 
 namespace ceres {
 namespace internal {
+
+using std::abs;
+using std::max;
+using std::string;
+using std::vector;
+
 namespace {
 
 // True if x and y have an absolute relative difference less than
@@ -67,14 +73,14 @@ bool IsClose(double x, double y, double relative_precision,
   if (!relative_error) {
     relative_error = &local_relative_error;
   }
-  *absolute_error = fabs(x - y);
-  *relative_error = *absolute_error / max(fabs(x), fabs(y));
+  *absolute_error = abs(x - y);
+  *relative_error = *absolute_error / max(abs(x), abs(y));
   if (x == 0 || y == 0) {
     // If x or y is exactly zero, then relative difference doesn't have any
     // meaning. Take the absolute difference instead.
     *relative_error = *absolute_error;
   }
-  return fabs(*relative_error) < fabs(relative_precision);
+  return abs(*relative_error) < abs(relative_precision);
 }
 
 class GradientCheckingCostFunction : public CostFunction {
@@ -93,7 +99,7 @@ class GradientCheckingCostFunction : public CostFunction {
             DO_NOT_TAKE_OWNERSHIP,
             relative_step_size);
 
-    const vector<int16>& parameter_block_sizes =
+    const vector<int32>& parameter_block_sizes =
         function->parameter_block_sizes();
     for (int i = 0; i < parameter_block_sizes.size(); ++i) {
       finite_diff_cost_function->AddParameterBlock(parameter_block_sizes[i]);
@@ -117,7 +123,7 @@ class GradientCheckingCostFunction : public CostFunction {
     int num_residuals = function_->num_residuals();
 
     // Make space for the jacobians of the two methods.
-    const vector<int16>& block_sizes = function_->parameter_block_sizes();
+    const vector<int32>& block_sizes = function_->parameter_block_sizes();
     vector<Matrix> term_jacobians(block_sizes.size());
     vector<Matrix> finite_difference_jacobians(block_sizes.size());
     vector<double*> term_jacobian_pointers(block_sizes.size());
@@ -181,8 +187,7 @@ class GradientCheckingCostFunction : public CostFunction {
                        relative_precision_,
                        &relative_error,
                        &absolute_error);
-          worst_relative_error = std::max(worst_relative_error,
-                                          relative_error);
+          worst_relative_error = max(worst_relative_error, relative_error);
 
           StringAppendF(&m, "%6d %4d %4d %17g %17g %17g %17g %17g %17g",
                         k, i, j,
@@ -309,6 +314,17 @@ ProblemImpl* CreateGradientCheckingProblemImpl(ProblemImpl* problem_impl,
         const_cast<LossFunction*>(residual_block->loss_function()),
         parameter_blocks);
   }
+
+  // Normally, when a problem is given to the solver, we guarantee
+  // that the state pointers for each parameter block point to the
+  // user provided data. Since we are creating this new problem from a
+  // problem given to us at an arbitrary stage of the solve, we cannot
+  // depend on this being the case, so we explicitly call
+  // SetParameterBlockStatePtrsToUserStatePtrs to ensure that this is
+  // the case.
+  gradient_checking_problem_impl
+      ->mutable_program()
+      ->SetParameterBlockStatePtrsToUserStatePtrs();
 
   return gradient_checking_problem_impl;
 }

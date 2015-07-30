@@ -1,6 +1,6 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-// http://code.google.com/p/ceres-solver/
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -31,20 +31,46 @@
 #ifndef CERES_PUBLIC_INTERNAL_PORT_H_
 #define CERES_PUBLIC_INTERNAL_PORT_H_
 
-#include <string>
+// This file needs to compile as c code.
+#ifdef __cplusplus
+
+#include "ceres/internal/config.h"
+
+#if defined(CERES_TR1_MEMORY_HEADER)
+#include <tr1/memory>
+#else
+#include <memory>
+#endif
 
 namespace ceres {
 
-// It is unfortunate that this import of the entire standard namespace is
-// necessary. The reasons are historical and won't be explained here, but
-// suffice to say it is not a mistake and can't be removed without breaking
-// things outside of the Ceres optimization package.
-using namespace std;
-
-// This is necessary to properly handle the case that there is a different
-// "string" implementation in the global namespace.
-using std::string;
+#if defined(CERES_TR1_SHARED_PTR)
+using std::tr1::shared_ptr;
+#else
+using std::shared_ptr;
+#endif
 
 }  // namespace ceres
+
+#endif  // __cplusplus
+
+// A macro to signal which functions and classes are exported when
+// building a DLL with MSVC.
+//
+// Note that the ordering here is important, CERES_BUILDING_SHARED_LIBRARY
+// is only defined locally when Ceres is compiled, it is never exported to
+// users.  However, in order that we do not have to configure config.h
+// separately for building vs installing, if we are using MSVC and building
+// a shared library, then both CERES_BUILDING_SHARED_LIBRARY and
+// CERES_USING_SHARED_LIBRARY will be defined when Ceres is compiled.
+// Hence it is important that the check for CERES_BUILDING_SHARED_LIBRARY
+// happens first.
+#if defined(_MSC_VER) && defined(CERES_BUILDING_SHARED_LIBRARY)
+# define CERES_EXPORT __declspec(dllexport)
+#elif defined(_MSC_VER) && defined(CERES_USING_SHARED_LIBRARY)
+# define CERES_EXPORT __declspec(dllimport)
+#else
+# define CERES_EXPORT
+#endif
 
 #endif  // CERES_PUBLIC_INTERNAL_PORT_H_

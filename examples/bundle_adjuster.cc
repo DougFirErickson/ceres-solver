@@ -1,6 +1,6 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-// http://code.google.com/p/ceres-solver/
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -79,6 +79,8 @@ DEFINE_string(blocks_for_inner_iterations, "automatic", "Options are: "
 DEFINE_string(linear_solver, "sparse_schur", "Options are: "
               "sparse_schur, dense_schur, iterative_schur, sparse_normal_cholesky, "
               "dense_qr, dense_normal_cholesky and cgnr.");
+DEFINE_bool(explicit_schur_complement, false, "If using ITERATIVE_SCHUR "
+            "then explicitly compute the Schur complement.");
 DEFINE_string(preconditioner, "jacobi", "Options are: "
               "identity, jacobi, schur_jacobi, cluster_jacobi, "
               "cluster_tridiagonal.");
@@ -116,9 +118,11 @@ DEFINE_double(point_sigma, 0.0, "Standard deviation of the point "
 DEFINE_int32(random_seed, 38401, "Random seed used to set the state "
              "of the pseudo random number generator used to generate "
              "the pertubations.");
-DEFINE_string(solver_log, "", "File to record the solver execution to.");
 DEFINE_bool(line_search, false, "Use a line search instead of trust region "
             "algorithm.");
+DEFINE_string(initial_ply, "", "Export the BAL file data as a PLY file.");
+DEFINE_string(final_ply, "", "Export the refined BAL file data as a PLY "
+              "file.");
 
 namespace ceres {
 namespace examples {
@@ -137,6 +141,7 @@ void SetLinearSolver(Solver::Options* options) {
             FLAGS_dense_linear_algebra_library,
             &options->dense_linear_algebra_library_type));
   options->num_linear_solver_threads = FLAGS_num_threads;
+  options->use_explicit_schur_complement = FLAGS_explicit_schur_complement;
 }
 
 void SetOrdering(BALProblem* bal_problem, Solver::Options* options) {
@@ -151,19 +156,19 @@ void SetOrdering(BALProblem* bal_problem, Solver::Options* options) {
   if (options->use_inner_iterations) {
     if (FLAGS_blocks_for_inner_iterations == "cameras") {
       LOG(INFO) << "Camera blocks for inner iterations";
-      options->inner_iteration_ordering = new ParameterBlockOrdering;
+      options->inner_iteration_ordering.reset(new ParameterBlockOrdering);
       for (int i = 0; i < num_cameras; ++i) {
         options->inner_iteration_ordering->AddElementToGroup(cameras + camera_block_size * i, 0);
       }
     } else if (FLAGS_blocks_for_inner_iterations == "points") {
       LOG(INFO) << "Point blocks for inner iterations";
-      options->inner_iteration_ordering = new ParameterBlockOrdering;
+      options->inner_iteration_ordering.reset(new ParameterBlockOrdering);
       for (int i = 0; i < num_points; ++i) {
         options->inner_iteration_ordering->AddElementToGroup(points + point_block_size * i, 0);
       }
     } else if (FLAGS_blocks_for_inner_iterations == "cameras,points") {
       LOG(INFO) << "Camera followed by point blocks for inner iterations";
-      options->inner_iteration_ordering = new ParameterBlockOrdering;
+      options->inner_iteration_ordering.reset(new ParameterBlockOrdering);
       for (int i = 0; i < num_cameras; ++i) {
         options->inner_iteration_ordering->AddElementToGroup(cameras + camera_block_size * i, 0);
       }
@@ -172,7 +177,7 @@ void SetOrdering(BALProblem* bal_problem, Solver::Options* options) {
       }
     } else if (FLAGS_blocks_for_inner_iterations == "points,cameras") {
       LOG(INFO) << "Point followed by camera blocks for inner iterations";
-      options->inner_iteration_ordering = new ParameterBlockOrdering;
+      options->inner_iteration_ordering.reset(new ParameterBlockOrdering);
       for (int i = 0; i < num_cameras; ++i) {
         options->inner_iteration_ordering->AddElementToGroup(cameras + camera_block_size * i, 1);
       }
@@ -221,7 +226,7 @@ void SetOrdering(BALProblem* bal_problem, Solver::Options* options) {
     }
   }
 
-  options->linear_solver_ordering = ordering;
+  options->linear_solver_ordering.reset(ordering);
 }
 
 void SetMinimizerOptions(Solver::Options* options) {
@@ -263,18 +268,14 @@ void BuildProblem(BALProblem* bal_problem, Problem* problem) {
     CostFunction* cost_function;
     // Each Residual block takes a point and a camera as input and
     // outputs a 2 dimensional residual.
-    if (FLAGS_use_quaternions) {
-      cost_function = new AutoDiffCostFunction<
-          SnavelyReprojectionErrorWithQuaternions, 2, 4, 6, 3>(
-              new SnavelyReprojectionErrorWithQuaternions(
-                  observations[2 * i + 0],
-                  observations[2 * i + 1]));
-    } else {
-      cost_function =
-          new AutoDiffCostFunction<SnavelyReprojectionError, 2, 9, 3>(
-              new SnavelyReprojectionError(observations[2 * i + 0],
-                                           observations[2 * i + 1]));
-    }
+    cost_function =
+        (FLAGS_use_quaternions)
+        ? SnavelyReprojectionErrorWithQuaternions::Create(
+            observations[2 * i + 0],
+            observations[2 * i + 1])
+        : SnavelyReprojectionError::Create(
+            observations[2 * i + 0],
+            observations[2 * i + 1]);
 
     // If enabled use Huber's loss function.
     LossFunction* loss_function = FLAGS_robustify ? new HuberLoss(1.0) : NULL;
@@ -313,6 +314,11 @@ void BuildProblem(BALProblem* bal_problem, Problem* problem) {
 
 void SolveProblem(const char* filename) {
   BALProblem bal_problem(filename, FLAGS_use_quaternions);
+
+  if (!FLAGS_initial_ply.empty()) {
+    bal_problem.WriteToPLYFile(FLAGS_initial_ply);
+  }
+
   Problem problem;
 
   srand(FLAGS_random_seed);
@@ -324,22 +330,25 @@ void SolveProblem(const char* filename) {
   BuildProblem(&bal_problem, &problem);
   Solver::Options options;
   SetSolverOptionsFromFlags(&bal_problem, &options);
-  options.solver_log = FLAGS_solver_log;
   options.gradient_tolerance = 1e-16;
   options.function_tolerance = 1e-16;
   Solver::Summary summary;
   Solve(options, &problem, &summary);
   std::cout << summary.FullReport() << "\n";
+
+  if (!FLAGS_final_ply.empty()) {
+    bal_problem.WriteToPLYFile(FLAGS_final_ply);
+  }
 }
 
 }  // namespace examples
 }  // namespace ceres
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  CERES_GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   if (FLAGS_input.empty()) {
-    LOG(ERROR) << "Usage: bundle_adjustment_example --input=bal_problem";
+    LOG(ERROR) << "Usage: bundle_adjuster --input=bal_problem";
     return 1;
   }
 

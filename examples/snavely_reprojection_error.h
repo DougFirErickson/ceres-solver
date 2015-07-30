@@ -1,6 +1,6 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-// http://code.google.com/p/ceres-solver/
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -91,6 +91,14 @@ struct SnavelyReprojectionError {
     return true;
   }
 
+  // Factory to hide the construction of the CostFunction object from
+  // the client code.
+  static ceres::CostFunction* Create(const double observed_x,
+                                     const double observed_y) {
+    return (new ceres::AutoDiffCostFunction<SnavelyReprojectionError, 2, 9, 3>(
+                new SnavelyReprojectionError(observed_x, observed_y)));
+  }
+
   double observed_x;
   double observed_y;
 };
@@ -144,6 +152,16 @@ struct SnavelyReprojectionErrorWithQuaternions {
     residuals[1] = predicted_y - T(observed_y);
 
     return true;
+  }
+
+  // Factory to hide the construction of the CostFunction object from
+  // the client code.
+  static ceres::CostFunction* Create(const double observed_x,
+                                     const double observed_y) {
+    return (new ceres::AutoDiffCostFunction<
+            SnavelyReprojectionErrorWithQuaternions, 2, 4, 6, 3>(
+                new SnavelyReprojectionErrorWithQuaternions(observed_x,
+                                                            observed_y)));
   }
 
   double observed_x;

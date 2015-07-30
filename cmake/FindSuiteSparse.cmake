@@ -1,6 +1,6 @@
 # Ceres Solver - A fast non-linear least squares minimizer
-# Copyright 2013 Google Inc. All rights reserved.
-# http://code.google.com/p/ceres-solver/
+# Copyright 2015 Google Inc. All rights reserved.
+# http://ceres-solver.org/
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -110,6 +110,14 @@
 # TBB_FOUND
 # TBB_LIBRARIES
 
+# Reset CALLERS_CMAKE_FIND_LIBRARY_PREFIXES to its value when
+# FindSuiteSparse was invoked.
+MACRO(SUITESPARSE_RESET_FIND_LIBRARY_PREFIX)
+  IF (MSVC)
+    SET(CMAKE_FIND_LIBRARY_PREFIXES "${CALLERS_CMAKE_FIND_LIBRARY_PREFIXES}")
+  ENDIF (MSVC)
+ENDMACRO(SUITESPARSE_RESET_FIND_LIBRARY_PREFIX)
+
 # Called if we failed to find SuiteSparse or any of it's required dependencies,
 # unsets all public (designed to be used externally) variables and reports
 # error message at priority depending upon [REQUIRED/QUIET/<NONE>] argument.
@@ -125,6 +133,8 @@ MACRO(SUITESPARSE_REPORT_NOT_FOUND REASON_MSG)
   # FindPackageHandleStandardArgs() to generate the automatic error message on
   # failure which highlights which components are missing.
 
+  SUITESPARSE_RESET_FIND_LIBRARY_PREFIX()
+
   # Note <package>_FIND_[REQUIRED/QUIETLY] variables defined by FindPackage()
   # use the camelcase library name, not uppercase.
   IF (SuiteSparse_FIND_QUIETLY)
@@ -139,6 +149,17 @@ MACRO(SUITESPARSE_REPORT_NOT_FOUND REASON_MSG)
 
   # Do not call RETURN(), s/t we keep processing if not called with REQUIRED.
 ENDMACRO(SUITESPARSE_REPORT_NOT_FOUND)
+
+# Handle possible presence of lib prefix for libraries on MSVC, see
+# also SUITESPARSE_RESET_FIND_LIBRARY_PREFIX().
+IF (MSVC)
+  # Preserve the caller's original values for CMAKE_FIND_LIBRARY_PREFIXES
+  # s/t we can set it back before returning.
+  SET(CALLERS_CMAKE_FIND_LIBRARY_PREFIXES "${CMAKE_FIND_LIBRARY_PREFIXES}")
+  # The empty string in this list is important, it represents the case when
+  # the libraries have no prefix (shared libraries / DLLs).
+  SET(CMAKE_FIND_LIBRARY_PREFIXES "lib" "" "${CMAKE_FIND_LIBRARY_PREFIXES}")
+ENDIF (MSVC)
 
 # Specify search directories for include files and libraries (this is the union
 # of the search directories for all OSs).  Search user-specified hint
@@ -362,7 +383,7 @@ IF (SUITESPARSEQR_FOUND)
       # any CMake generated help string (cache variable).
       LIST(APPEND TBB_LIBRARIES ${TBB_MALLOC_LIB})
       GET_PROPERTY(HELP_STRING CACHE TBB_LIBRARIES PROPERTY HELPSTRING)
-      SET(TBB_LIBRARIES "${TBB_LIBRARIES}" CACHE STRING ${HELP_STRING})
+      SET(TBB_LIBRARIES "${TBB_LIBRARIES}" CACHE STRING "${HELP_STRING}")
 
       # Add the TBB libraries to the SuiteSparseQR libraries (the only
       # libraries to optionally depend on TBB).
@@ -523,8 +544,10 @@ FIND_LIBRARY(METIS_LIBRARY NAMES metis
   PATHS ${SUITESPARSE_CHECK_LIBRARY_DIRS})
 IF (EXISTS ${METIS_LIBRARY})
   MESSAGE(STATUS "Found METIS library: ${METIS_LIBRARY}.")
+  set(METIS_FOUND TRUE)
 ELSE (EXISTS ${METIS_LIBRARY})
   MESSAGE(STATUS "Did not find METIS library (optional SuiteSparse dependency)")
+  set(METIS_FOUND FALSE)
 ENDIF (EXISTS ${METIS_LIBRARY})
 MARK_AS_ADVANCED(METIS_LIBRARY)
 
@@ -608,6 +631,8 @@ IF (CMAKE_SYSTEM_NAME MATCHES "Linux" AND
   ENDIF (LSB_RELEASE_EXECUTABLE)
 ENDIF (CMAKE_SYSTEM_NAME MATCHES "Linux" AND
   SUITESPARSE_VERSION VERSION_EQUAL 3.4.0)
+
+SUITESPARSE_RESET_FIND_LIBRARY_PREFIX()
 
 # Handle REQUIRED and QUIET arguments to FIND_PACKAGE
 INCLUDE(FindPackageHandleStandardArgs)

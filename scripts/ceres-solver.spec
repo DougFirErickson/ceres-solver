@@ -1,15 +1,15 @@
 Name:           ceres-solver
-Version:        1.8.0
+Version:        1.10.0
 # Release candidate versions are messy. Give them a release of
 # e.g. "0.1.0%{?dist}" for RC1 (and remember to adjust the Source0
 # URL). Non-RC releases go back to incrementing integers starting at 1.
-Release:        0.3.0%{?dist}
+Release:        0.0.0%{?dist}
 Summary:        A non-linear least squares minimizer
 
 Group:          Development/Libraries
 License:        BSD
-URL:            http://code.google.com/p/ceres-solver/
-Source0:        http://%{name}.googlecode.com/files/%{name}-%{version}rc3.tar.gz
+URL:            http://ceres-solver.org/
+Source0:        http://%{name}.org/%{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 %if (0%{?rhel} == 06)
@@ -31,23 +31,31 @@ BuildRequires:  gflags-devel
 BuildRequires:  glog-devel
 
 %description
-Ceres Solver is a portable C++ library that allows for modeling and solving
-large complicated nonlinear least squares problems. Features include:
+
+Ceres Solver is an open source C++ library for modeling and solving
+large, complicated optimization problems. It is a feature rich, mature
+and performant library which has been used in production at Google
+since 2010. Notable use of Ceres Solver is for the image alignment in
+Google Maps and for vehicle pose in Google Street View. Ceres Solver
+can solve two kinds of problems.
+
+  1. Non-linear Least Squares problems with bounds constraints.
+  2. General unconstrained optimization problems.
+
+Features include:
 
   - A friendly API: build your objective function one term at a time
-  - Automatic differentiation
+  - Automatic and numeric differentiation
   - Robust loss functions
   - Local parameterizations
   - Threaded Jacobian evaluators and linear solvers
-  - Levenberg-Marquardt and Dogleg (Powell & Subspace) solvers
+  - Trust region solvers with non-monotonic steps (Levenberg-Marquardt and Dogleg (Powell & Subspace))
+  - Line search solvers (L-BFGS and Nonlinear CG)
   - Dense QR and Cholesky factorization (using Eigen) for small problems
   - Sparse Cholesky factorization (using SuiteSparse) for large sparse problems
   - Specialized solvers for bundle adjustment problems in computer vision
   - Iterative linear solvers for general sparse and bundle adjustment problems
-  - Runs on Linux, Windows, Mac OS X and Android. An iOS port is underway
-
-Notable use of Ceres Solver is for the image alignment in Google Maps and for
-vehicle pose in Google Street View.
+  - Runs on Linux, Windows, Mac OS X, Android, and iOS
 
 
 %package        devel
@@ -110,6 +118,21 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Feb Dec 5 2014 Sameer Agarwal <sameeragarwal@google.com> - 1.10.0-0.0.0
+- Bump version (and yes this is a downward revisio).
+
+* Mon Nov 12 2014 Sameer Agarwal <sameeragarwal@google.com> - 1.10.0-0.2.0
+- Bump version
+
+* Mon Oct 6 2014 Sameer Agarwal <sameeragarwal@google.com> - 1.10.0-0.1.0
+- Bump version
+
+* Mon May 27 2014 Sameer Agarwal <sameeragarwal@google.com> - 1.9.0-0.2.0
+- Bump version
+
+* Fri May 16 2014 Sameer Agarwal <sameeragarwal@google.com> - 1.9.0-0.1.0
+- Bump version
+
 * Tue Nov 12 2013 Sameer Agarwal <sameeragarwal@google.com> - 1.8.0-0.3.0
 - Bump version
 

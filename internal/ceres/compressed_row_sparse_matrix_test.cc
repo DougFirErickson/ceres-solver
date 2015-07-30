@@ -1,6 +1,6 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-// http://code.google.com/p/ceres-solver/
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -44,6 +44,8 @@
 
 namespace ceres {
 namespace internal {
+
+using std::vector;
 
 void CompareMatrices(const SparseMatrix* a, const SparseMatrix* b) {
   EXPECT_EQ(a->num_rows(), b->num_rows());
@@ -169,7 +171,7 @@ TEST_F(CompressedRowSparseMatrixTest, AppendAndDeleteBlockDiagonalMatrix) {
 
   scoped_array<double> diagonal(new double[num_diagonal_rows]);
   for (int i = 0; i < num_diagonal_rows; ++i) {
-    diagonal[i] =i;
+    diagonal[i] = i;
   }
 
   vector<int> row_and_column_blocks;
@@ -338,10 +340,22 @@ TEST(CompressedRowSparseMatrix, Transpose) {
   // 13  0 14 15  9  0
   //  0 16 17  0  0  0
 
+  // Block structure:
+  //  A  A  A  A  B  B
+  //  A  A  A  A  B  B
+  //  A  A  A  A  B  B
+  //  C  C  C  C  D  D
+  //  C  C  C  C  D  D
+  //  C  C  C  C  D  D
+
   CompressedRowSparseMatrix matrix(5, 6, 30);
   int* rows = matrix.mutable_rows();
   int* cols = matrix.mutable_cols();
   double* values = matrix.mutable_values();
+  matrix.mutable_row_blocks()->push_back(3);
+  matrix.mutable_row_blocks()->push_back(3);
+  matrix.mutable_col_blocks()->push_back(4);
+  matrix.mutable_col_blocks()->push_back(2);
 
   rows[0] = 0;
   cols[0] = 1;
@@ -372,9 +386,19 @@ TEST(CompressedRowSparseMatrix, Transpose) {
   cols[16] = 2;
   rows[5] = 17;
 
-  copy(values, values + 17, cols);
+  std::copy(values, values + 17, cols);
 
   scoped_ptr<CompressedRowSparseMatrix> transpose(matrix.Transpose());
+
+  ASSERT_EQ(transpose->row_blocks().size(), matrix.col_blocks().size());
+  for (int i = 0; i < transpose->row_blocks().size(); ++i) {
+    EXPECT_EQ(transpose->row_blocks()[i], matrix.col_blocks()[i]);
+  }
+
+  ASSERT_EQ(transpose->col_blocks().size(), matrix.row_blocks().size());
+  for (int i = 0; i < transpose->col_blocks().size(); ++i) {
+    EXPECT_EQ(transpose->col_blocks()[i], matrix.row_blocks()[i]);
+  }
 
   Matrix dense_matrix;
   matrix.ToDenseMatrix(&dense_matrix);
@@ -456,11 +480,11 @@ void ToDenseMatrix(const cs_di* matrix, Matrix* dense_matrix) {
   dense_matrix->setZero();
 
   for (int c = 0; c < matrix->n; ++c) {
-   for (int idx = matrix->p[c]; idx < matrix->p[c + 1]; ++idx) {
-     const int r = matrix->i[idx];
-     (*dense_matrix)(r, c) = matrix->x[idx];
-   }
- }
+    for (int idx = matrix->p[c]; idx < matrix->p[c + 1]; ++idx) {
+      const int r = matrix->i[idx];
+      (*dense_matrix)(r, c) = matrix->x[idx];
+    }
+  }
 }
 
 TEST(CompressedRowSparseMatrix, ComputeOuterProduct) {
@@ -484,8 +508,6 @@ TEST(CompressedRowSparseMatrix, ComputeOuterProduct) {
          num_col_blocks < kMaxNumColBlocks;
          ++num_col_blocks) {
       for (int trial = 0; trial < kNumTrials; ++trial) {
-
-
         RandomMatrixOptions options;
         options.num_row_blocks = num_row_blocks;
         options.num_col_blocks = num_col_blocks;
@@ -506,7 +528,8 @@ TEST(CompressedRowSparseMatrix, ComputeOuterProduct) {
         scoped_ptr<CompressedRowSparseMatrix> matrix(
             CreateRandomCompressedRowSparseMatrix(options));
 
-        cs_di cs_matrix_transpose = cxsparse.CreateSparseMatrixTransposeView(matrix.get());
+        cs_di cs_matrix_transpose =
+            cxsparse.CreateSparseMatrixTransposeView(matrix.get());
         cs_di* cs_matrix = cxsparse.TransposeMatrix(&cs_matrix_transpose);
         cs_di* expected_outer_product =
             cxsparse.MatrixMatrixMultiply(&cs_matrix_transpose, cs_matrix);
@@ -533,7 +556,8 @@ TEST(CompressedRowSparseMatrix, ComputeOuterProduct) {
         expected_matrix.triangularView<Eigen::StrictlyLower>().setZero();
 
         ToDenseMatrix(&actual_outer_product, &actual_matrix);
-        const double diff_norm = (actual_matrix - expected_matrix).norm() / expected_matrix.norm();
+        const double diff_norm =
+            (actual_matrix - expected_matrix).norm() / expected_matrix.norm();
         ASSERT_NEAR(diff_norm, 0.0, kTolerance)
             << "expected: \n"
             << expected_matrix

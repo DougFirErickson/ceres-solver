@@ -1,6 +1,6 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-// http://code.google.com/p/ceres-solver/
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -187,17 +187,31 @@ TEST_F(SchurComplementSolverTest,
 
 #ifndef CERES_NO_CXSPARSE
 TEST_F(SchurComplementSolverTest,
-       SparseSchurWithSuiteSparseSmallProblem) {
+       SparseSchurWithCXSparseSmallProblem) {
   ComputeAndCompareSolutions(2, false, SPARSE_SCHUR, EIGEN, CX_SPARSE, true);
   ComputeAndCompareSolutions(2, true, SPARSE_SCHUR, EIGEN, CX_SPARSE, true);
 }
 
 TEST_F(SchurComplementSolverTest,
-       SparseSchurWithSuiteSparseLargeProblem) {
+       SparseSchurWithCXSparseLargeProblem) {
   ComputeAndCompareSolutions(3, false, SPARSE_SCHUR, EIGEN, CX_SPARSE, true);
   ComputeAndCompareSolutions(3, true, SPARSE_SCHUR, EIGEN, CX_SPARSE, true);
 }
 #endif  // CERES_NO_CXSPARSE
+
+#ifdef CERES_USE_EIGEN_SPARSE
+TEST_F(SchurComplementSolverTest,
+       SparseSchurWithEigenSparseSmallProblem) {
+  ComputeAndCompareSolutions(2, false, SPARSE_SCHUR, EIGEN, EIGEN_SPARSE, true);
+  ComputeAndCompareSolutions(2, true, SPARSE_SCHUR, EIGEN, EIGEN_SPARSE, true);
+}
+
+TEST_F(SchurComplementSolverTest,
+       SparseSchurWithEigenSparseLargeProblem) {
+  ComputeAndCompareSolutions(3, false, SPARSE_SCHUR, EIGEN, EIGEN_SPARSE, true);
+  ComputeAndCompareSolutions(3, true, SPARSE_SCHUR, EIGEN, EIGEN_SPARSE, true);
+}
+#endif  // CERES_USE_EIGEN_SPARSE
 
 }  // namespace internal
 }  // namespace ceres

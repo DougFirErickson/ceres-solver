@@ -44,9 +44,19 @@ Bibliography
    with indeterminacy**, *IEEE Transactions on Information Theory*
    47(5):2017-2028, 2001.
 
+.. [Keys] R. G. Keys, **Cubic convolution interpolation for digital
+   image processing**, *IEEE Trans. on Acoustics, Speech, and Signal
+   Processing*, 29(6), 1981.
+
 .. [KushalAgarwal] A. Kushal and S. Agarwal, **Visibility based
    preconditioning for bundle adjustment**, *In Proceedings of the
    IEEE Conference on Computer Vision and Pattern Recognition*, 2012.
+
+.. [Kanzow] C. Kanzow, N. Yamashita and M. Fukushima,
+   **Levenberg–Marquardt methods with strong local convergence
+   properties for solving nonlinear equations with convex
+   constraints**, *Journal of Computational and Applied Mathematics*,
+   177(2):375–397, 2005.
 
 .. [Levenberg] K. Levenberg, **A method for the solution of certain
    nonlinear problems in least squares**, *Quart. Appl.  Math*,
@@ -113,7 +123,3 @@ Bibliography
    Levenberg Marquardt Method for Large Sparse Nonlinear Least
    Squares**, *Journal of the Australian Mathematical Society Series
    B*, 26(4):387–403, 1985.
-
-
-
-

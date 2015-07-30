@@ -1,6 +1,6 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-// http://code.google.com/p/ceres-solver/
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -43,6 +43,8 @@
 #include <cstdlib>
 #include <string>
 
+#include "ceres/internal/port.h"
+
 #include "ceres/autodiff_cost_function.h"
 #include "ceres/ordered_groups.h"
 #include "ceres/problem.h"
@@ -57,6 +59,9 @@
 
 namespace ceres {
 namespace internal {
+
+using std::string;
+using std::vector;
 
 const bool kAutomaticOrdering = true;
 const bool kUserOrdering = false;
@@ -120,8 +125,9 @@ struct SolverConfig {
 //       Solver::Options* mutable_solver_options();
 //   };
 template <typename SystemTestProblem>
-void RunSolversAndCheckTheyMatch(const vector<SolverConfig>& configurations,
-                                 const double max_abs_difference) {
+void RunSolversAndCheckTheyMatch(
+    const vector<SolverConfig>& configurations,
+    const double max_abs_difference) {
   int num_configurations = configurations.size();
   vector<SystemTestProblem*> problems;
   vector<vector<double> > final_residuals(num_configurations);
@@ -140,8 +146,7 @@ void RunSolversAndCheckTheyMatch(const vector<SolverConfig>& configurations,
     options.num_linear_solver_threads = config.num_threads;
 
     if (config.use_automatic_ordering) {
-      delete options.linear_solver_ordering;
-      options.linear_solver_ordering = NULL;
+      options.linear_solver_ordering.reset();
     }
 
     LOG(INFO) << "Running solver configuration: "
@@ -347,7 +352,7 @@ class BundleAdjustmentProblem {
 
     if (!fptr) {
       LOG(FATAL) << "File Error: unable to open file " << filename;
-    };
+    }
 
     // This will die horribly on invalid files. Them's the breaks.
     FscanfOrDie(fptr, "%d", &num_cameras_);
@@ -398,7 +403,7 @@ class BundleAdjustmentProblem {
       problem_.AddResidualBlock(cost_function, NULL, camera, point);
     }
 
-    options_.linear_solver_ordering = new ParameterBlockOrdering;
+    options_.linear_solver_ordering.reset(new ParameterBlockOrdering);
 
     // The points come before the cameras.
     for (int i = 0; i < num_points_; ++i) {
@@ -494,40 +499,45 @@ TEST(SystemTest, BundleAdjustmentProblem) {
                                  ordering,                              \
                                  preconditioner))
 
+  CONFIGURE(DENSE_SCHUR,            SUITE_SPARSE, kAutomaticOrdering, IDENTITY);
+  CONFIGURE(DENSE_SCHUR,            SUITE_SPARSE, kUserOrdering,      IDENTITY);
+
+  CONFIGURE(CGNR,                   SUITE_SPARSE, kAutomaticOrdering, JACOBI);
+
+  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kUserOrdering,      JACOBI);
+  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kAutomaticOrdering, JACOBI);
+
+  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kUserOrdering,      SCHUR_JACOBI);
+  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kAutomaticOrdering, SCHUR_JACOBI);
+
 #ifndef CERES_NO_SUITESPARSE
   CONFIGURE(SPARSE_NORMAL_CHOLESKY, SUITE_SPARSE, kAutomaticOrdering, IDENTITY);
   CONFIGURE(SPARSE_NORMAL_CHOLESKY, SUITE_SPARSE, kUserOrdering,      IDENTITY);
 
   CONFIGURE(SPARSE_SCHUR,           SUITE_SPARSE, kAutomaticOrdering, IDENTITY);
   CONFIGURE(SPARSE_SCHUR,           SUITE_SPARSE, kUserOrdering,      IDENTITY);
+
+  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kAutomaticOrdering, CLUSTER_JACOBI);
+  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kUserOrdering,      CLUSTER_JACOBI);
+
+  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kAutomaticOrdering, CLUSTER_TRIDIAGONAL);
+  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kUserOrdering,      CLUSTER_TRIDIAGONAL);
 #endif  // CERES_NO_SUITESPARSE
 
 #ifndef CERES_NO_CXSPARSE
+  CONFIGURE(SPARSE_NORMAL_CHOLESKY, CX_SPARSE,    kAutomaticOrdering, IDENTITY);
+  CONFIGURE(SPARSE_NORMAL_CHOLESKY, CX_SPARSE,    kUserOrdering,      IDENTITY);
+
   CONFIGURE(SPARSE_SCHUR,           CX_SPARSE,    kAutomaticOrdering, IDENTITY);
   CONFIGURE(SPARSE_SCHUR,           CX_SPARSE,    kUserOrdering,      IDENTITY);
 #endif  // CERES_NO_CXSPARSE
 
-  CONFIGURE(DENSE_SCHUR,            SUITE_SPARSE, kAutomaticOrdering, IDENTITY);
-  CONFIGURE(DENSE_SCHUR,            SUITE_SPARSE, kUserOrdering,      IDENTITY);
-
-  CONFIGURE(CGNR,                   SUITE_SPARSE, kAutomaticOrdering, JACOBI);
-  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kUserOrdering,      JACOBI);
-  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kUserOrdering,      SCHUR_JACOBI);
-
-#ifndef CERES_NO_SUITESPARSE
-
-  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kUserOrdering,      CLUSTER_JACOBI);
-  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kUserOrdering,      CLUSTER_TRIDIAGONAL);
-#endif  // CERES_NO_SUITESPARSE
-
-  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kAutomaticOrdering, JACOBI);
-  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kAutomaticOrdering, SCHUR_JACOBI);
-
-#ifndef CERES_NO_SUITESPARSE
-
-  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kAutomaticOrdering, CLUSTER_JACOBI);
-  CONFIGURE(ITERATIVE_SCHUR,        SUITE_SPARSE, kAutomaticOrdering, CLUSTER_TRIDIAGONAL);
-#endif  // CERES_NO_SUITESPARSE
+#ifdef CERES_USE_EIGEN_SPARSE
+  CONFIGURE(SPARSE_SCHUR,           EIGEN_SPARSE, kAutomaticOrdering, IDENTITY);
+  CONFIGURE(SPARSE_SCHUR,           EIGEN_SPARSE, kUserOrdering,      IDENTITY);
+  CONFIGURE(SPARSE_NORMAL_CHOLESKY, EIGEN_SPARSE, kAutomaticOrdering, IDENTITY);
+  CONFIGURE(SPARSE_NORMAL_CHOLESKY, EIGEN_SPARSE, kUserOrdering,      IDENTITY);
+#endif  // CERES_USE_EIGEN_SPARSE
 
 #undef CONFIGURE
 

@@ -1,6 +1,6 @@
 // Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-// http://code.google.com/p/ceres-solver/
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -48,14 +48,15 @@
 #include "gmock/mock-log.h"
 #include "gtest/gtest.h"
 
+namespace ceres {
+namespace internal {
+
+using std::vector;
 using testing::AllOf;
 using testing::AnyNumber;
 using testing::HasSubstr;
 using testing::ScopedMockLog;
 using testing::_;
-
-namespace ceres {
-namespace internal {
 
 // Pick a (non-quadratic) function whose derivative are easy:
 //
@@ -264,7 +265,7 @@ TEST(GradientCheckingCostFunction, SmokeTest) {
 // Trivial cost function that accepts a single argument.
 class UnaryCostFunction : public CostFunction {
  public:
-  UnaryCostFunction(int num_residuals, int16 parameter_block_size) {
+  UnaryCostFunction(int num_residuals, int32 parameter_block_size) {
     set_num_residuals(num_residuals);
     mutable_parameter_block_sizes()->push_back(parameter_block_size);
   }
@@ -284,8 +285,8 @@ class UnaryCostFunction : public CostFunction {
 class BinaryCostFunction: public CostFunction {
  public:
   BinaryCostFunction(int num_residuals,
-                     int16 parameter_block1_size,
-                     int16 parameter_block2_size) {
+                     int32 parameter_block1_size,
+                     int32 parameter_block2_size) {
     set_num_residuals(num_residuals);
     mutable_parameter_block_sizes()->push_back(parameter_block1_size);
     mutable_parameter_block_sizes()->push_back(parameter_block2_size);
@@ -305,9 +306,9 @@ class BinaryCostFunction: public CostFunction {
 class TernaryCostFunction: public CostFunction {
  public:
   TernaryCostFunction(int num_residuals,
-                      int16 parameter_block1_size,
-                      int16 parameter_block2_size,
-                      int16 parameter_block3_size) {
+                      int32 parameter_block1_size,
+                      int32 parameter_block2_size,
+                      int32 parameter_block3_size) {
     set_num_residuals(num_residuals);
     mutable_parameter_block_sizes()->push_back(parameter_block1_size);
     mutable_parameter_block_sizes()->push_back(parameter_block2_size);

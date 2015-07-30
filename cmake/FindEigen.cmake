@@ -1,6 +1,6 @@
 # Ceres Solver - A fast non-linear least squares minimizer
-# Copyright 2013 Google Inc. All rights reserved.
-# http://code.google.com/p/ceres-solver/
+# Copyright 2015 Google Inc. All rights reserved.
+# http://ceres-solver.org/
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -87,17 +87,23 @@ ENDMACRO(EIGEN_REPORT_NOT_FOUND)
 #
 # TODO: Add standard Windows search locations for Eigen.
 LIST(APPEND EIGEN_CHECK_INCLUDE_DIRS
-  /usr/local/include/eigen3
-  /usr/local/homebrew/include/eigen3 # Mac OS X
-  /opt/local/var/macports/software/eigen3 # Mac OS X.
-  /opt/local/include/eigen3
-  /usr/include/eigen3)
+  /usr/local/include
+  /usr/local/homebrew/include # Mac OS X
+  /opt/local/var/macports/software # Mac OS X.
+  /opt/local/include
+  /usr/include)
+# Additional suffixes to try appending to each search path.
+LIST(APPEND EIGEN_CHECK_PATH_SUFFIXES
+  eigen3 # Default root directory for Eigen.
+  Eigen/include/eigen3 ) # Windows (for C:/Program Files prefix).
 
 # Search supplied hint directories first if supplied.
 FIND_PATH(EIGEN_INCLUDE_DIR
   NAMES Eigen/Core
   PATHS ${EIGEN_INCLUDE_DIR_HINTS}
-  ${EIGEN_CHECK_INCLUDE_DIRS})
+  ${EIGEN_CHECK_INCLUDE_DIRS}
+  PATH_SUFFIXES ${EIGEN_CHECK_PATH_SUFFIXES})
+
 IF (NOT EIGEN_INCLUDE_DIR OR
     NOT EXISTS ${EIGEN_INCLUDE_DIR})
   EIGEN_REPORT_NOT_FOUND(

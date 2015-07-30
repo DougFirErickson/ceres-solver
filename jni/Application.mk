@@ -1,6 +1,6 @@
 # Ceres Solver - A fast non-linear least squares minimizer
-# Copyright 2010, 2011, 2012 Google Inc. All rights reserved.
-# http://code.google.com/p/ceres-solver/
+# Copyright 2015 Google Inc. All rights reserved.
+# http://ceres-solver.org/
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -33,6 +33,7 @@ APP_CPPFLAGS += -fno-exceptions
 APP_CPPFLAGS += -fno-rtti
 APP_OPTIM := release
 
-# Don't use GNU libstdc++; instead use STLPort, which is free of GPL3 issues.
-APP_STL := stlport_static
+# Use libc++ from LLVM. It is a modern BSD licensed implementation of
+# the standard C++ library.
+APP_STL := c++_static
 APP_ABI := armeabi-v7a
